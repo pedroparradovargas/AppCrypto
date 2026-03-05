@@ -2,108 +2,154 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'model/currency.dart';
 
-void main() async {
-  var currencies = await getCurrencies();
-
-  print(currencies);
-
-  runApp(new MaterialApp(
-    home: new CryptoListWidget(currencies)
+void main() {
+  runApp(MaterialApp(
+    home: CryptoListWidget(),
   ));
 }
 
-Future<List> getCurrencies() async {
-  String url = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1';
-  http.Response response = await http.get(Uri.parse(url));
-  return jsonDecode(response.body);
+class CryptoListWidget extends StatefulWidget {
+  @override
+  _CryptoListWidgetState createState() => _CryptoListWidgetState();
 }
 
-class CryptoListWidget extends StatelessWidget {
+const String _coinGeckoApiUrl =
+    'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1';
+// TODO: Add your API key here if required by the API provider.
 
+class _CryptoListWidgetState extends State<CryptoListWidget> {
+  List<Currency> _currencies = [];
+  bool _isLoading = true;
+  String? _error;
   final List<MaterialColor> _colors = [Colors.blue, Colors.indigo, Colors.red];
-  final List _currencies;
 
-  CryptoListWidget(this._currencies);
+  @override
+  void initState() {
+    super.initState();
+    _getCurrencies();
+  }
+
+  Future<void> _getCurrencies() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final response = await http.get(Uri.parse(_coinGeckoApiUrl));
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        setState(() {
+          _currencies = data.map((json) => Currency.fromJson(json)).toList();
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+          _error = 'Failed to load currencies';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _error = 'Failed to load currencies: $e';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return new Scaffold(
+    return Scaffold(
       body: _buildBody(),
-      backgroundColor: Colors.blue
+      backgroundColor: Colors.blue,
     );
   }
 
   Widget _buildBody() {
-    return new Container(
+    if (_isLoading) {
+      return Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Text(_error!),
+      );
+    }
+
+    return Container(
       margin: const EdgeInsets.fromLTRB(8.0, 56.0, 8.0, 8.0),
-      child: new Column(
+      child: Column(
         children: <Widget>[
           _getAppTitleWidget(),
-          _getListViewWidget()
-        ]
-      )
+          _getListViewWidget(),
+        ],
+      ),
     );
   }
 
   Widget _getAppTitleWidget() {
-    return new Text(
+    return Text(
       'Crypto Flutter',
-      style: new TextStyle(
+      style: TextStyle(
         color: Colors.white,
         fontWeight: FontWeight.bold,
-        fontSize: 24.0
-      )
+        fontSize: 24.0,
+      ),
     );
   }
 
   Widget _getListViewWidget() {
-    return new Flexible(
-        child: new ListView.builder(
-            itemCount: _currencies.length,
-            itemBuilder: (context, index) {
-              final Map currency = _currencies[index];
-              final MaterialColor color = _colors[index % _colors.length];
-              return _getListItemWidget(currency, color);
-            }
-        )
+    return Flexible(
+      child: ListView.builder(
+        itemCount: _currencies.length,
+        itemBuilder: (context, index) {
+          final Currency currency = _currencies[index];
+          final MaterialColor color = _colors[index % _colors.length];
+          return _getListItemWidget(currency, color);
+        },
+      ),
     );
   }
 
-  Container _getListItemWidget(Map currency, MaterialColor color) {
-    return new Container(
+  Container _getListItemWidget(Currency currency, MaterialColor color) {
+    return Container(
       margin: const EdgeInsets.only(top: 5.0),
-      child: new Card(
-        child: _getListTile(currency, color)
-      )
+      child: Card(
+        child: _getListTile(currency, color),
+      ),
     );
   }
 
-  ListTile _getListTile(Map currency, MaterialColor color) {
-    return new ListTile(
-      leading: _getLeadingWidget(currency['name'], color),
-      title: _getTitleWidget(currency['name']),
-      subtitle: _getSubtitleWidget(currency['current_price']?.toString() ?? '0', currency['price_change_percentage_1h_in_currency']?.toStringAsFixed(2) ?? '0'),
-      isThreeLine: true
+  ListTile _getListTile(Currency currency, MaterialColor color) {
+    return ListTile(
+      leading: _getLeadingWidget(currency.name, color),
+      title: _getTitleWidget(currency.name),
+      subtitle: _getSubtitleWidget(
+        currency.currentPrice.toString(),
+        currency.priceChangePercentage1h.toStringAsFixed(2),
+      ),
+      isThreeLine: true,
     );
   }
 
   CircleAvatar _getLeadingWidget(String currencyName, MaterialColor color) {
-    return new CircleAvatar(
+    return CircleAvatar(
       backgroundColor: color,
-      child: new Text(currencyName[0])
+      child: Text(currencyName[0]),
     );
   }
 
   Text _getTitleWidget(String currencyName) {
-    return new Text(
+    return Text(
       currencyName,
-      style: new TextStyle(fontWeight: FontWeight.bold)
+      style: TextStyle(fontWeight: FontWeight.bold),
     );
   }
 
   Text _getSubtitleWidget(String priceUsd, String percentChange1h) {
-    return new Text('\$$priceUsd\n1 hour: $percentChange1h%');
+    return Text('\$priceUsd\n1 hour: $percentChange1h%');
   }
-
 }
