@@ -1,155 +1,123 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'model/currency.dart';
+import 'package:provider/provider.dart';
+import 'providers/crypto_provider.dart';
+import 'screens/home_screen.dart';
+import 'screens/wallet_screen.dart';
+import 'screens/history_screen.dart';
 
 void main() {
-  runApp(MaterialApp(
-    home: CryptoListWidget(),
-  ));
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => CryptoProvider()..initialize(),
+      child: const CryptoExchangeApp(),
+    ),
+  );
 }
 
-class CryptoListWidget extends StatefulWidget {
+class CryptoExchangeApp extends StatelessWidget {
+  const CryptoExchangeApp({Key? key}) : super(key: key);
+
   @override
-  _CryptoListWidgetState createState() => _CryptoListWidgetState();
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'CryptoExchange',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: const Color(0xFF1A1A2E),
+        primaryColor: Colors.blueAccent,
+        colorScheme: ColorScheme.dark(
+          primary: Colors.blueAccent,
+          secondary: Colors.purpleAccent,
+        ),
+      ),
+      home: const MainNavigation(),
+    );
+  }
 }
 
-const String _coinGeckoApiUrl =
-    'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1';
-// TODO: Add your API key here if required by the API provider.
-
-class _CryptoListWidgetState extends State<CryptoListWidget> {
-  List<Currency> _currencies = [];
-  bool _isLoading = true;
-  String? _error;
-  final List<MaterialColor> _colors = [Colors.blue, Colors.indigo, Colors.red];
+class MainNavigation extends StatefulWidget {
+  const MainNavigation({Key? key}) : super(key: key);
 
   @override
-  void initState() {
-    super.initState();
-    _getCurrencies();
-  }
+  State<MainNavigation> createState() => _MainNavigationState();
+}
 
-  Future<void> _getCurrencies() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-    try {
-      final response = await http.get(Uri.parse(_coinGeckoApiUrl));
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        setState(() {
-          _currencies = data.map((json) => Currency.fromJson(json)).toList();
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _isLoading = false;
-          _error = 'Failed to load currencies';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _error = 'Failed to load currencies: $e';
-      });
-    }
-  }
+class _MainNavigationState extends State<MainNavigation> {
+  int _currentIndex = 0;
+
+  final List<Widget> _screens = [
+    const HomeScreen(),
+    const WalletScreen(),
+    const HistoryScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _buildBody(),
-      backgroundColor: Colors.blue,
-    );
-  }
-
-  Widget _buildBody() {
-    if (_isLoading) {
-      return Center(
-        child: CircularProgressIndicator(),
-      );
-    }
-
-    if (_error != null) {
-      return Center(
-        child: Text(_error!),
-      );
-    }
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(8.0, 56.0, 8.0, 8.0),
-      child: Column(
-        children: <Widget>[
-          _getAppTitleWidget(),
-          _getListViewWidget(),
-        ],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _screens,
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF16213E),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(0, Icons.trending_up, 'Market'),
+                _buildNavItem(1, Icons.account_balance_wallet, 'Wallet'),
+                _buildNavItem(2, Icons.receipt_long, 'History'),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 
-  Widget _getAppTitleWidget() {
-    return Text(
-      'Crypto Flutter',
-      style: TextStyle(
-        color: Colors.white,
-        fontWeight: FontWeight.bold,
-        fontSize: 24.0,
+  Widget _buildNavItem(int index, IconData icon, String label) {
+    final isSelected = _currentIndex == index;
+    final color = isSelected ? Colors.blueAccent : Colors.grey;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _currentIndex = index;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.blueAccent.withOpacity(0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
       ),
     );
-  }
-
-  Widget _getListViewWidget() {
-    return Flexible(
-      child: ListView.builder(
-        itemCount: _currencies.length,
-        itemBuilder: (context, index) {
-          final Currency currency = _currencies[index];
-          final MaterialColor color = _colors[index % _colors.length];
-          return _getListItemWidget(currency, color);
-        },
-      ),
-    );
-  }
-
-  Container _getListItemWidget(Currency currency, MaterialColor color) {
-    return Container(
-      margin: const EdgeInsets.only(top: 5.0),
-      child: Card(
-        child: _getListTile(currency, color),
-      ),
-    );
-  }
-
-  ListTile _getListTile(Currency currency, MaterialColor color) {
-    return ListTile(
-      leading: _getLeadingWidget(currency.name, color),
-      title: _getTitleWidget(currency.name),
-      subtitle: _getSubtitleWidget(
-        currency.currentPrice.toString(),
-        currency.priceChangePercentage1h.toStringAsFixed(2),
-      ),
-      isThreeLine: true,
-    );
-  }
-
-  CircleAvatar _getLeadingWidget(String currencyName, MaterialColor color) {
-    return CircleAvatar(
-      backgroundColor: color,
-      child: Text(currencyName[0]),
-    );
-  }
-
-  Text _getTitleWidget(String currencyName) {
-    return Text(
-      currencyName,
-      style: TextStyle(fontWeight: FontWeight.bold),
-    );
-  }
-
-  Text _getSubtitleWidget(String priceUsd, String percentChange1h) {
-    return Text('\$priceUsd\n1 hour: $percentChange1h%');
   }
 }
