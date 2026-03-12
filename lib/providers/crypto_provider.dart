@@ -1,13 +1,18 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:candlesticks/candlesticks.dart';
 import '../models/currency.dart';
 import '../models/wallet.dart';
-import '../models/transaction.dart';
+import '../models/transaction.dart' as app_models;
+import '../models/candle_data.dart';
 import '../services/crypto_service.dart';
+import '../main.dart' show firebaseInitialized;
 
 class CryptoProvider extends ChangeNotifier {
   final CryptoService _cryptoService = CryptoService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Market data
   List<Currency> _currencies = [];
@@ -18,12 +23,16 @@ class CryptoProvider extends ChangeNotifier {
 
   // User data
   Wallet _wallet = Wallet();
-  List<Transaction> _transactions = [];
+  List<app_models.Transaction> _transactions = [];
 
   // Current selected currency for detail view
   Currency? _selectedCurrency;
   List<double> _historicalPrices = [];
   bool _isLoadingHistorical = false;
+
+  // Candlestick chart data (Binance style)
+  List<Candle> _candles = [];
+  bool _isLoadingCandles = false;
 
   // Getters
   List<Currency> get currencies =>
@@ -31,10 +40,23 @@ class CryptoProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   Wallet get wallet => _wallet;
-  List<Transaction> get transactions => _transactions;
+  List<app_models.Transaction> get transactions => _transactions;
   Currency? get selectedCurrency => _selectedCurrency;
   List<double> get historicalPrices => _historicalPrices;
   bool get isLoadingHistorical => _isLoadingHistorical;
+  List<Candle> get candles => _candles;
+  bool get isLoadingCandles => _isLoadingCandles;
+
+  /// UID del usuario actual en Firebase Auth
+  String? get _uid => _auth.currentUser?.uid;
+
+  /// Referencia al documento del wallet del usuario
+  DocumentReference? get _walletDoc =>
+      _uid != null ? _firestore.collection('users').doc(_uid).collection('data').doc('wallet') : null;
+
+  /// Referencia a la coleccion de transacciones del usuario
+  CollectionReference? get _transactionsCol =>
+      _uid != null ? _firestore.collection('users').doc(_uid).collection('transactions') : null;
 
   // Initialize provider
   Future<void> initialize() async {
@@ -105,6 +127,73 @@ class CryptoProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Load candlestick data (OHLC) for Binance-style charts
+  Future<void> loadCandleData(String currencyId, {int days = 7}) async {
+    _isLoadingCandles = true;
+    notifyListeners();
+
+    try {
+      final ohlcData = await _cryptoService.getOHLCData(
+        currencyId,
+        days: days,
+      );
+
+      // Obtener volumenes
+      List<List<dynamic>> volumeData = [];
+      try {
+        volumeData = await _cryptoService.getVolumeData(
+          currencyId,
+          days: days,
+        );
+      } catch (_) {
+        // Si falla el volumen, continuar sin el
+      }
+
+      // Parsear datos OHLC
+      final candleDataList = ohlcData
+          .map((data) => CandleData.fromCoinGeckoOHLC(data))
+          .toList();
+
+      // Merge volumes por timestamp mas cercano
+      if (volumeData.isNotEmpty) {
+        for (int i = 0; i < candleDataList.length; i++) {
+          final candleTime = candleDataList[i].date.millisecondsSinceEpoch;
+          double closestVolume = 0;
+          int minDiff = double.maxFinite.toInt();
+
+          for (final vol in volumeData) {
+            final volTime = vol[0] as int;
+            final diff = (volTime - candleTime).abs();
+            if (diff < minDiff) {
+              minDiff = diff;
+              closestVolume = (vol[1] as num).toDouble();
+            }
+          }
+
+          candleDataList[i] = candleDataList[i].copyWith(volume: closestVolume);
+        }
+      }
+
+      // Convertir a Candle del paquete candlesticks
+      _candles = candleDataList.map((c) => Candle(
+        date: c.date,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+        volume: c.volume,
+      )).toList();
+
+      // Ordenar por fecha descendente (el paquete lo requiere asi)
+      _candles.sort((a, b) => b.date.compareTo(a.date));
+    } catch (e) {
+      _candles = [];
+    }
+
+    _isLoadingCandles = false;
+    notifyListeners();
+  }
+
   // Buy cryptocurrency
   Future<bool> buyCurrency(Currency currency, double amount) async {
     final totalCost = amount * currency.currentPrice;
@@ -115,13 +204,13 @@ class CryptoProvider extends ChangeNotifier {
     }
 
     // Create transaction
-    final transaction = Transaction(
+    final transaction = app_models.Transaction(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       currencyId: currency.id,
       currencyName: currency.name,
       currencySymbol: currency.symbol,
       currencyImage: currency.image,
-      type: TransactionType.buy,
+      type: app_models.TransactionType.buy,
       amount: amount,
       pricePerUnit: currency.currentPrice,
       totalValue: totalCost,
@@ -170,9 +259,9 @@ class CryptoProvider extends ChangeNotifier {
     // Add transaction
     _transactions.insert(0, transaction);
 
-    // Save data
+    // Save data to Firestore
     await _saveWallet();
-    await _saveTransactions();
+    await _saveTransaction(transaction);
 
     notifyListeners();
     return true;
@@ -200,13 +289,13 @@ class CryptoProvider extends ChangeNotifier {
     final totalValue = amount * currency.currentPrice;
 
     // Create transaction
-    final transaction = Transaction(
+    final transaction = app_models.Transaction(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       currencyId: currency.id,
       currencyName: currency.name,
       currencySymbol: currency.symbol,
       currencyImage: currency.image,
-      type: TransactionType.sell,
+      type: app_models.TransactionType.sell,
       amount: amount,
       pricePerUnit: currency.currentPrice,
       totalValue: totalValue,
@@ -236,9 +325,9 @@ class CryptoProvider extends ChangeNotifier {
     // Add transaction
     _transactions.insert(0, transaction);
 
-    // Save data
+    // Save data to Firestore
     await _saveWallet();
-    await _saveTransactions();
+    await _saveTransaction(transaction);
 
     notifyListeners();
     return true;
@@ -266,54 +355,84 @@ class CryptoProvider extends ChangeNotifier {
     return ((currentPrice - item.averageBuyPrice) / item.averageBuyPrice) * 100;
   }
 
-  // Persist wallet data
+  // ==================== FIRESTORE PERSISTENCE ====================
+
+  // Save wallet to Firestore
   Future<void> _saveWallet() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('wallet', jsonEncode(_wallet.toJson()));
+    if (!firebaseInitialized || _walletDoc == null) return;
+
+    try {
+      await _walletDoc!.set(_wallet.toJson()).timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint('Error guardando wallet en Firestore: $e');
+    }
   }
 
-  // Load wallet data
+  // Load wallet from Firestore
   Future<void> _loadWallet() async {
-    final prefs = await SharedPreferences.getInstance();
-    final walletJson = prefs.getString('wallet');
-    if (walletJson != null) {
-      try {
-        _wallet = Wallet.fromJson(jsonDecode(walletJson));
-      } catch (e) {
-        _wallet = Wallet();
+    if (!firebaseInitialized || _walletDoc == null) return;
+
+    try {
+      final doc = await _walletDoc!.get().timeout(const Duration(seconds: 10));
+      if (doc.exists && doc.data() != null) {
+        _wallet = Wallet.fromJson(doc.data()! as Map<String, dynamic>);
       }
+    } catch (e) {
+      debugPrint('Error cargando wallet desde Firestore: $e');
+      _wallet = Wallet();
     }
   }
 
-  // Persist transactions
-  Future<void> _saveTransactions() async {
-    final prefs = await SharedPreferences.getInstance();
-    final transactionsJson = jsonEncode(
-      _transactions.map((t) => t.toJson()).toList(),
-    );
-    await prefs.setString('transactions', transactionsJson);
+  // Save a single transaction to Firestore
+  Future<void> _saveTransaction(app_models.Transaction transaction) async {
+    if (!firebaseInitialized || _transactionsCol == null) return;
+
+    try {
+      await _transactionsCol!.doc(transaction.id).set(transaction.toJson())
+          .timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint('Error guardando transaccion en Firestore: $e');
+    }
   }
 
-  // Load transactions
+  // Load transactions from Firestore
   Future<void> _loadTransactions() async {
-    final prefs = await SharedPreferences.getInstance();
-    final transactionsJson = prefs.getString('transactions');
-    if (transactionsJson != null) {
-      try {
-        final List<dynamic> data = jsonDecode(transactionsJson);
-        _transactions = data.map((t) => Transaction.fromJson(t)).toList();
-      } catch (e) {
-        _transactions = [];
-      }
+    if (!firebaseInitialized || _transactionsCol == null) return;
+
+    try {
+      final snapshot = await _transactionsCol!
+          .orderBy('timestamp', descending: true)
+          .limit(100)
+          .get()
+          .timeout(const Duration(seconds: 10));
+
+      _transactions = snapshot.docs
+          .map((doc) => app_models.Transaction.fromJson(doc.data() as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      debugPrint('Error cargando transacciones desde Firestore: $e');
+      _transactions = [];
     }
   }
 
-  // Reset demo (clear all data)
+  // Reset all user data
   Future<void> resetDemo() async {
     _wallet = Wallet();
     _transactions = [];
     await _saveWallet();
-    await _saveTransactions();
+
+    // Delete all transactions from Firestore
+    if (firebaseInitialized && _transactionsCol != null) {
+      try {
+        final snapshot = await _transactionsCol!.get();
+        for (final doc in snapshot.docs) {
+          await doc.reference.delete();
+        }
+      } catch (e) {
+        debugPrint('Error eliminando transacciones: $e');
+      }
+    }
+
     notifyListeners();
   }
 }

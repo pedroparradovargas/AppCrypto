@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/crypto_provider.dart';
 import '../models/currency.dart';
+import '../utils/responsive.dart';
 import 'detail_screen.dart';
+import 'payment_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Responsive.init(context);
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       body: SafeArea(
@@ -38,38 +41,52 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(Responsive.w(16)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'CryptoMarket',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'CryptoMarket',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: Responsive.sp(28),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              Consumer<CryptoProvider>(
-                builder: (context, provider, _) {
-                  return Text(
-                    '\$${provider.wallet.usdBalance.toStringAsFixed(2)} USD',
-                    style: TextStyle(
-                      color: Colors.greenAccent,
-                      fontSize: 16,
-                    ),
-                  );
-                },
-              ),
-            ],
+                Consumer<CryptoProvider>(
+                  builder: (context, provider, _) {
+                    return Text(
+                      '\$${provider.wallet.usdBalance.toStringAsFixed(2)} USD',
+                      style: TextStyle(
+                        color: Colors.greenAccent,
+                        fontSize: Responsive.sp(16),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
           IconButton(
             icon: Icon(Icons.refresh, color: Colors.white),
             onPressed: () {
               context.read<CryptoProvider>().fetchCurrencies();
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.add_circle, color: Colors.greenAccent,
+                size: Responsive.sp(32)),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PaymentScreen(),
+                ),
+              );
             },
           ),
         ],
@@ -79,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: Responsive.w(16)),
       child: TextField(
         controller: _searchController,
         style: TextStyle(color: Colors.white),
@@ -117,9 +134,9 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(
                   'Error loading data',
-                  style: TextStyle(color: Colors.white, fontSize: 18),
+                  style: TextStyle(color: Colors.white, fontSize: Responsive.sp(18)),
                 ),
-                SizedBox(height: 8),
+                SizedBox(height: Responsive.h(8)),
                 ElevatedButton(
                   onPressed: () => provider.fetchCurrencies(),
                   child: Text('Retry'),
@@ -130,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
 
         final currencies = provider.currencies;
-        
+
         if (currencies.isEmpty) {
           return Center(
             child: Text(
@@ -141,7 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(Responsive.w(16)),
           itemCount: currencies.length,
           itemBuilder: (context, index) {
             return _buildCurrencyCard(currencies[index]);
@@ -155,10 +172,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final priceChangeColor = currency.priceChangePercentage24h >= 0
         ? Colors.greenAccent
         : Colors.redAccent;
-    
+
     final priceChangeIcon = currency.priceChangePercentage24h >= 0
         ? Icons.arrow_upward
         : Icons.arrow_downward;
+
+    final iconSize = Responsive.w(48).clamp(36.0, 64.0);
 
     return GestureDetector(
       onTap: () {
@@ -171,8 +190,8 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        margin: EdgeInsets.only(bottom: Responsive.h(12)),
+        padding: EdgeInsets.all(Responsive.w(16)),
         decoration: BoxDecoration(
           color: const Color(0xFF16213E),
           borderRadius: BorderRadius.circular(16),
@@ -180,32 +199,32 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Row(
           children: [
             // Rank
-            Container(
-              width: 30,
+            SizedBox(
+              width: Responsive.w(30),
               child: Text(
                 '${currency.marketCapRank}',
-                style: TextStyle(color: Colors.grey, fontSize: 12),
+                style: TextStyle(color: Colors.grey, fontSize: Responsive.sp(12)),
               ),
             ),
             // Image
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Image.network(
-                currency.image,
-                errorBuilder: (_, __, ___) => CircleAvatar(
-                  backgroundColor: Colors.blue,
-                  child: Text(
-                    currency.symbol.toUpperCase()[0],
-                    style: TextStyle(color: Colors.white),
+            SizedBox(
+              width: iconSize,
+              height: iconSize,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(iconSize / 2),
+                child: Image.network(
+                  currency.image,
+                  errorBuilder: (_, __, ___) => CircleAvatar(
+                    backgroundColor: Colors.blue,
+                    child: Text(
+                      currency.symbol.toUpperCase()[0],
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: Responsive.w(12)),
             // Name and Symbol
             Expanded(
               child: Column(
@@ -215,15 +234,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     currency.name,
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
+                      fontSize: Responsive.sp(16),
                       fontWeight: FontWeight.bold,
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     currency.symbol.toUpperCase(),
                     style: TextStyle(
                       color: Colors.grey,
-                      fontSize: 14,
+                      fontSize: Responsive.sp(14),
                     ),
                   ),
                 ],
@@ -237,19 +257,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   '\$${_formatPrice(currency.currentPrice)}',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: Responsive.sp(16),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(priceChangeIcon, color: priceChangeColor, size: 14),
+                    Icon(priceChangeIcon, color: priceChangeColor,
+                        size: Responsive.sp(14)),
                     Text(
                       '${currency.priceChangePercentage24h.toStringAsFixed(2)}%',
                       style: TextStyle(
                         color: priceChangeColor,
-                        fontSize: 12,
+                        fontSize: Responsive.sp(12),
                       ),
                     ),
                   ],

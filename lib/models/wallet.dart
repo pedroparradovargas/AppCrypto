@@ -64,7 +64,7 @@ class Wallet {
 
   Wallet({
     this.items = const [],
-    this.usdBalance = 10000.0, // Starting with $10,000 USD simulation
+    this.usdBalance = 0.0,
   });
 
   double get totalValueInUsd {
@@ -88,7 +88,7 @@ class Wallet {
               ?.map((item) => WalletItem.fromJson(item))
               .toList() ??
           [],
-      usdBalance: (json['usdBalance'] as num?)?.toDouble() ?? 10000.0,
+      usdBalance: (json['usdBalance'] as num?)?.toDouble() ?? 0.0,
     );
   }
 

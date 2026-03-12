@@ -3,12 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/crypto_provider.dart';
 import '../models/transaction.dart';
+import '../utils/responsive.dart';
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    Responsive.init(context);
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       body: SafeArea(
@@ -24,16 +26,19 @@ class HistoryScreen extends StatelessWidget {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(Responsive.w(16)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'Transaction History',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
+          Flexible(
+            child: Text(
+              'Transaction History',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: Responsive.sp(28),
+                fontWeight: FontWeight.bold,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -53,23 +58,23 @@ class HistoryScreen extends StatelessWidget {
               children: [
                 Icon(
                   Icons.receipt_long_outlined,
-                  size: 64,
+                  size: Responsive.sp(64),
                   color: Colors.grey,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: Responsive.h(16)),
                 Text(
                   'No transactions yet',
                   style: TextStyle(
                     color: Colors.grey,
-                    fontSize: 18,
+                    fontSize: Responsive.sp(18),
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: Responsive.h(8)),
                 Text(
                   'Your trading history will appear here',
                   style: TextStyle(
                     color: Colors.grey,
-                    fontSize: 14,
+                    fontSize: Responsive.sp(14),
                   ),
                 ),
               ],
@@ -78,7 +83,7 @@ class HistoryScreen extends StatelessWidget {
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(Responsive.w(16)),
           itemCount: transactions.length,
           itemBuilder: (context, index) {
             return _buildTransactionItem(transactions[index]);
@@ -93,10 +98,11 @@ class HistoryScreen extends StatelessWidget {
     final typeColor = isBuy ? Colors.greenAccent : Colors.redAccent;
     final typeIcon = isBuy ? Icons.arrow_downward : Icons.arrow_upward;
     final typeText = isBuy ? 'Buy' : 'Sell';
+    final iconSize = Responsive.w(48).clamp(36.0, 64.0);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: Responsive.h(12)),
+      padding: EdgeInsets.all(Responsive.w(16)),
       decoration: BoxDecoration(
         color: const Color(0xFF16213E),
         borderRadius: BorderRadius.circular(16),
@@ -105,15 +111,15 @@ class HistoryScreen extends StatelessWidget {
         children: [
           // Icon
           Container(
-            width: 48,
-            height: 48,
+            width: iconSize,
+            height: iconSize,
             decoration: BoxDecoration(
               color: typeColor.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(iconSize / 2),
             ),
-            child: Icon(typeIcon, color: typeColor),
+            child: Icon(typeIcon, color: typeColor, size: Responsive.sp(24)),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: Responsive.w(12)),
           // Details
           Expanded(
             child: Column(
@@ -125,52 +131,48 @@ class HistoryScreen extends StatelessWidget {
                       typeText,
                       style: TextStyle(
                         color: typeColor,
-                        fontSize: 14,
+                        fontSize: Responsive.sp(14),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: Responsive.w(8)),
                     Text(
                       transaction.currencySymbol.toUpperCase(),
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 14,
+                        fontSize: Responsive.sp(14),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: Responsive.h(4)),
                 Text(
                   '${transaction.amount.toStringAsFixed(8)} @ \$${transaction.pricePerUnit.toStringAsFixed(2)}',
                   style: TextStyle(
                     color: Colors.grey,
-                    fontSize: 12,
+                    fontSize: Responsive.sp(12),
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   _formatDate(transaction.timestamp),
                   style: TextStyle(
                     color: Colors.grey,
-                    fontSize: 12,
+                    fontSize: Responsive.sp(12),
                   ),
                 ),
               ],
             ),
           ),
           // Total Value
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${isBuy ? '-' : '+'}\$${transaction.totalValue.toStringAsFixed(2)}',
-                style: TextStyle(
-                  color: typeColor,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
+          Text(
+            '${isBuy ? '-' : '+'}\$${transaction.totalValue.toStringAsFixed(2)}',
+            style: TextStyle(
+              color: typeColor,
+              fontSize: Responsive.sp(16),
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),

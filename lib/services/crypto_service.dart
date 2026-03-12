@@ -22,8 +22,8 @@ class CryptoService {
     );
 
     try {
-      final response = await http.get(url);
-      
+      final response = await http.get(url).timeout(const Duration(seconds: 15));
+
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => Currency.fromJson(json)).toList();
@@ -85,6 +85,57 @@ class CryptoService {
       }
     } catch (e) {
       throw Exception('Failed to load historical data: $e');
+    }
+  }
+
+  // Fetch OHLC data for candlestick charts (Binance style)
+  Future<List<List<dynamic>>> getOHLCData(
+    String currencyId, {
+    int days = 7,
+  }) async {
+    final url = Uri.parse(
+      '$_baseUrl/coins/$currencyId/ohlc?'
+      'vs_currency=usd&'
+      'days=$days',
+    );
+
+    try {
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.cast<List<dynamic>>();
+      } else {
+        throw Exception('Failed to load OHLC data: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to load OHLC data: $e');
+    }
+  }
+
+  // Fetch volume data from market_chart endpoint
+  Future<List<List<dynamic>>> getVolumeData(
+    String currencyId, {
+    int days = 7,
+  }) async {
+    final url = Uri.parse(
+      '$_baseUrl/coins/$currencyId/market_chart?'
+      'vs_currency=usd&'
+      'days=$days',
+    );
+
+    try {
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final volumes = data['total_volumes'] as List;
+        return volumes.cast<List<dynamic>>();
+      } else {
+        throw Exception('Failed to load volume data: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to load volume data: $e');
     }
   }
 

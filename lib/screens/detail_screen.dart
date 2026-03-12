@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/currency.dart';
 import '../providers/crypto_provider.dart';
+import '../utils/responsive.dart';
+import '../widgets/candlestick_chart_widget.dart';
 
 class DetailScreen extends StatefulWidget {
   final Currency currency;
@@ -15,6 +17,7 @@ class DetailScreen extends StatefulWidget {
 
 class _DetailScreenState extends State<DetailScreen> {
   int _selectedDays = 7;
+  bool _showCandlestick = true; // Default: candlestick (Binance style)
   final TextEditingController _amountController = TextEditingController();
 
   @override
@@ -25,6 +28,7 @@ class _DetailScreenState extends State<DetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Responsive.init(context);
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       appBar: AppBar(
@@ -38,8 +42,8 @@ class _DetailScreenState extends State<DetailScreen> {
           children: [
             Image.network(
               widget.currency.image,
-              width: 32,
-              height: 32,
+              width: Responsive.w(32),
+              height: Responsive.w(32),
               errorBuilder: (_, __, ___) => CircleAvatar(
                 backgroundColor: Colors.blue,
                 child: Text(
@@ -48,28 +52,31 @@ class _DetailScreenState extends State<DetailScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            Text(
-              widget.currency.name,
-              style: TextStyle(color: Colors.white, fontSize: 20),
+            SizedBox(width: Responsive.w(8)),
+            Flexible(
+              child: Text(
+                widget.currency.name,
+                style: TextStyle(color: Colors.white, fontSize: Responsive.sp(20)),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(Responsive.w(16)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildPriceSection(),
-              const SizedBox(height: 24),
+              SizedBox(height: Responsive.h(24)),
               _buildChartSection(),
-              const SizedBox(height: 24),
+              SizedBox(height: Responsive.h(24)),
               _buildStatsSection(),
-              const SizedBox(height: 24),
+              SizedBox(height: Responsive.h(24)),
               _buildWalletSection(),
-              const SizedBox(height: 24),
+              SizedBox(height: Responsive.h(24)),
               _buildTradeSection(),
             ],
           ),
@@ -86,12 +93,16 @@ class _DetailScreenState extends State<DetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '\$${_formatPrice(widget.currency.currentPrice)}',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 36,
-            fontWeight: FontWeight.bold,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            '\$${_formatPrice(widget.currency.currentPrice)}',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: Responsive.sp(36),
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         Row(
@@ -101,15 +112,15 @@ class _DetailScreenState extends State<DetailScreen> {
                   ? Icons.arrow_upward
                   : Icons.arrow_downward,
               color: priceChangeColor,
-              size: 20,
+              size: Responsive.sp(20),
             ),
             Text(
               '${widget.currency.priceChangePercentage24h.toStringAsFixed(2)}%',
-              style: TextStyle(color: priceChangeColor, fontSize: 18),
+              style: TextStyle(color: priceChangeColor, fontSize: Responsive.sp(18)),
             ),
             Text(
               ' (24h)',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+              style: TextStyle(color: Colors.grey, fontSize: Responsive.sp(14)),
             ),
           ],
         ),
@@ -123,41 +134,116 @@ class _DetailScreenState extends State<DetailScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Toggle entre lineal y candlestick
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   'Price Chart',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                    fontSize: Responsive.sp(18),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                _buildTimeSelector(),
+                const Spacer(),
+                // Toggle buttons
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF16213E),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildChartToggle(
+                        icon: Icons.show_chart,
+                        isSelected: !_showCandlestick,
+                        onTap: () => setState(() => _showCandlestick = false),
+                      ),
+                      _buildChartToggle(
+                        icon: Icons.candlestick_chart,
+                        isSelected: _showCandlestick,
+                        onTap: () {
+                          setState(() => _showCandlestick = true);
+                          // Cargar datos de velas si no estan cargados
+                          if (provider.candles.isEmpty) {
+                            provider.loadCandleData(
+                              widget.currency.id,
+                              days: _selectedDays,
+                            );
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 16),
-            Container(
-              height: 200,
-              decoration: BoxDecoration(
-                color: const Color(0xFF16213E),
-                borderRadius: BorderRadius.circular(16),
+            SizedBox(height: Responsive.h(16)),
+
+            if (_showCandlestick)
+              // Grafica Candlestick estilo Binance
+              CandlestickChartWidget(
+                candles: provider.candles,
+                isLoading: provider.isLoadingCandles,
+                selectedDays: _selectedDays,
+                onIntervalChanged: (days) {
+                  setState(() => _selectedDays = days);
+                  provider.loadCandleData(widget.currency.id, days: days);
+                  provider.loadHistoricalPrices(widget.currency.id, days: days);
+                },
+              )
+            else ...[
+              // Grafica lineal original
+              _buildTimeSelector(),
+              SizedBox(height: Responsive.h(12)),
+              Container(
+                height: Responsive.h(200).clamp(150.0, 300.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF16213E),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: provider.isLoadingHistorical
+                    ? Center(
+                        child: CircularProgressIndicator(color: Colors.blueAccent),
+                      )
+                    : _buildChart(provider.historicalPrices),
               ),
-              child: provider.isLoadingHistorical
-                  ? Center(
-                      child: CircularProgressIndicator(color: Colors.blueAccent),
-                    )
-                  : _buildChart(provider.historicalPrices),
-            ),
+            ],
           ],
         );
       },
     );
   }
 
+  Widget _buildChartToggle({
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: Responsive.w(10),
+          vertical: Responsive.h(6),
+        ),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.blueAccent : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          icon,
+          color: isSelected ? Colors.white : Colors.grey,
+          size: Responsive.sp(18),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTimeSelector() {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
         _buildTimeButton('1D', 1),
         _buildTimeButton('1W', 7),
@@ -180,8 +266,11 @@ class _DetailScreenState extends State<DetailScreen> {
         );
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        margin: const EdgeInsets.only(left: 4),
+        padding: EdgeInsets.symmetric(
+          horizontal: Responsive.w(12),
+          vertical: Responsive.h(6),
+        ),
+        margin: EdgeInsets.only(left: Responsive.w(4)),
         decoration: BoxDecoration(
           color: isSelected ? Colors.blueAccent : const Color(0xFF16213E),
           borderRadius: BorderRadius.circular(8),
@@ -190,7 +279,7 @@ class _DetailScreenState extends State<DetailScreen> {
           label,
           style: TextStyle(
             color: isSelected ? Colors.white : Colors.grey,
-            fontSize: 12,
+            fontSize: Responsive.sp(12),
           ),
         ),
       ),
@@ -211,7 +300,7 @@ class _DetailScreenState extends State<DetailScreen> {
     final lineColor = isPositive ? Colors.greenAccent : Colors.redAccent;
 
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(Responsive.w(16)),
       child: LineChart(
         LineChartData(
           gridData: FlGridData(show: false),
@@ -241,7 +330,7 @@ class _DetailScreenState extends State<DetailScreen> {
 
   Widget _buildStatsSection() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(Responsive.w(16)),
       decoration: BoxDecoration(
         color: const Color(0xFF16213E),
         borderRadius: BorderRadius.circular(16),
@@ -253,11 +342,11 @@ class _DetailScreenState extends State<DetailScreen> {
             'Statistics',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 18,
+              fontSize: Responsive.sp(18),
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: Responsive.h(16)),
           _buildStatRow('Market Cap', '\$${_formatLargeNumber(widget.currency.marketCap)}'),
           _buildStatRow('24h Volume', '\$${_formatLargeNumber(widget.currency.totalVolume)}'),
           _buildStatRow('24h High', '\$${_formatPrice(widget.currency.high24h)}'),
@@ -270,12 +359,18 @@ class _DetailScreenState extends State<DetailScreen> {
 
   Widget _buildStatRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: Responsive.h(8)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey)),
-          Text(value, style: TextStyle(color: Colors.white)),
+          Text(label, style: TextStyle(color: Colors.grey, fontSize: Responsive.sp(14))),
+          Flexible(
+            child: Text(
+              value,
+              style: TextStyle(color: Colors.white, fontSize: Responsive.sp(14)),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
@@ -285,10 +380,10 @@ class _DetailScreenState extends State<DetailScreen> {
     return Consumer<CryptoProvider>(
       builder: (context, provider, _) {
         final walletItem = provider.getWalletItem(widget.currency.id);
-        
+
         if (walletItem == null) {
           return Container(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(Responsive.w(16)),
             decoration: BoxDecoration(
               color: const Color(0xFF16213E),
               borderRadius: BorderRadius.circular(16),
@@ -296,10 +391,12 @@ class _DetailScreenState extends State<DetailScreen> {
             child: Row(
               children: [
                 Icon(Icons.account_balance_wallet, color: Colors.grey),
-                const SizedBox(width: 12),
-                Text(
-                  'You don\'t have any ${widget.currency.symbol.toUpperCase()}',
-                  style: TextStyle(color: Colors.grey),
+                SizedBox(width: Responsive.w(12)),
+                Expanded(
+                  child: Text(
+                    'You don\'t have any ${widget.currency.symbol.toUpperCase()}',
+                    style: TextStyle(color: Colors.grey, fontSize: Responsive.sp(14)),
+                  ),
                 ),
               ],
             ),
@@ -314,10 +411,9 @@ class _DetailScreenState extends State<DetailScreen> {
           walletItem,
           widget.currency.currentPrice,
         );
-        final profitLossColor = profitLoss >= 0 ? Colors.greenAccent : Colors.redAccent;
 
         return Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(Responsive.w(16)),
           decoration: BoxDecoration(
             color: const Color(0xFF16213E),
             borderRadius: BorderRadius.circular(16),
@@ -329,11 +425,11 @@ class _DetailScreenState extends State<DetailScreen> {
                 'Your Holdings',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 18,
+                  fontSize: Responsive.sp(18),
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: Responsive.h(16)),
               _buildStatRow(
                 'Amount',
                 '${walletItem.amount.toStringAsFixed(8)} ${walletItem.symbol.toUpperCase()}',
@@ -359,7 +455,7 @@ class _DetailScreenState extends State<DetailScreen> {
 
   Widget _buildTradeSection() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(Responsive.w(16)),
       decoration: BoxDecoration(
         color: const Color(0xFF16213E),
         borderRadius: BorderRadius.circular(16),
@@ -371,11 +467,11 @@ class _DetailScreenState extends State<DetailScreen> {
             'Trade',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 18,
+              fontSize: Responsive.sp(18),
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: Responsive.h(16)),
           TextField(
             controller: _amountController,
             keyboardType: TextInputType.number,
@@ -392,7 +488,7 @@ class _DetailScreenState extends State<DetailScreen> {
               suffixText: widget.currency.symbol.toUpperCase(),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: Responsive.h(16)),
           Row(
             children: [
               Expanded(
@@ -400,7 +496,7 @@ class _DetailScreenState extends State<DetailScreen> {
                   onPressed: () => _buy(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.greenAccent,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: EdgeInsets.symmetric(vertical: Responsive.h(16)),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -409,19 +505,19 @@ class _DetailScreenState extends State<DetailScreen> {
                     'Buy',
                     style: TextStyle(
                       color: Colors.black,
-                      fontSize: 16,
+                      fontSize: Responsive.sp(16),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: Responsive.w(16)),
               Expanded(
                 child: ElevatedButton(
                   onPressed: () => _sell(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.redAccent,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: EdgeInsets.symmetric(vertical: Responsive.h(16)),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -430,7 +526,7 @@ class _DetailScreenState extends State<DetailScreen> {
                     'Sell',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
+                      fontSize: Responsive.sp(16),
                       fontWeight: FontWeight.bold,
                     ),
                   ),

@@ -1,8 +1,9 @@
 name: crypto_flutter
-description: Project that presents current crypto currencies values.
+description: Aplicacion de intercambio de criptomonedas con billeteras reales, graficas en tiempo real y pagos seguros.
+version: 1.0.0+1
 
 environment:
-  sdk: ">=2.17.0 <4.0.0"
+  sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -13,13 +14,45 @@ dependencies:
   cupertino_icons: ^1.0.2
   http: ^1.2.0
   provider: ^6.1.1
-  fl_chart: ^0.66.0
+  fl_chart: ^0.69.0
   shared_preferences: ^2.2.2
+  flutter_secure_storage: ^9.0.0
   intl: ^0.19.0
+  crypto: ^3.0.3
+  local_auth: ^2.3.0
+
+  # Firebase
+  firebase_core: ^3.8.1
+  firebase_auth: ^5.4.1
+  cloud_firestore: ^5.6.1
+
+  # Graficas estilo Binance (candlestick)
+  candlesticks: ^2.1.0
+
+  # Billeteras reales - BIP39/BIP32/Web3
+  web3dart: ^2.7.3
+  bip39: ^1.0.6
+  bip32: ^2.0.0
+  hex: ^0.2.0
+  pointycastle: ^3.9.1
+
+  # WalletConnect v2
+  walletconnect_flutter_v2: ^2.0.14
+
+  # Backend / Pagos
+  uuid: ^4.5.1
+
+dependency_overrides:
+  path_provider_foundation: 2.4.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_lints: ^5.0.0
+  integration_test:
+    sdk: flutter
+  mockito: ^5.4.4
+  build_runner: ^2.4.13
 
 
 # For information on the generic Dart part of this file, see the
