@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"D:/aplicaciones mobiles/flutter/bin/flutter\" build apk --debug 2>&1 | tail -20)",
+      "Bash(\"D:/aplicaciones mobiles/flutter/bin/flutter\" build apk --debug 2>&1 | head -40)",
+      "Bash(\"D:/aplicaciones mobiles/flutter/bin/flutter\" build apk --debug 2>&1 | head -50)",
+      "Bash(\"D:/aplicaciones mobiles/flutter/bin/flutter\" pub deps 2>&1 | grep -i objective)",
+      "Bash(\"D:/aplicaciones mobiles/flutter/bin/flutter\" pub deps 2>&1 | grep -B10 \"objective_c\")",
+      "Bash(\"D:/aplicaciones mobiles/flutter/bin/flutter\" --version 2>&1)",
+      "Bash(cmd //c \"mklink /J D:\\\\crypto_flutter \\\\\"D:\\\\aplicaciones mobiles\\\\proyecto final\\\\\"\" 2>&1)",
+      "Read(//d//**)",
+      "Bash(\"D:/aplicaciones mobiles/flutter/bin/flutter\" build apk --debug)",
+      "Bash(cmd //c \"cd /d D:\\\\crypto_flutter && D:\\\\\\\\\"aplicaciones mobiles\\\\\"\\\\\\\\flutter\\\\\\\\bin\\\\\\\\flutter build apk --debug\" 2>&1 | tail -20)",
+      "Bash(cmd //c \"cd /d D:\\\\crypto_flutter && dir\" 2>&1 | head -10)",
+      "Bash(cmd //c \"dir D:\\\\crypto_flutter\" 2>&1 | head -10)",
+      "Bash(cmd //c \"rmdir D:\\\\crypto_flutter\" 2>&1; cmd //c \"mklink /J D:\\\\crypto_flutter \\\\\"D:\\\\aplicaciones mobiles\\\\proyecto final\\\\\"\" 2>&1)",
+      "Bash(cmd //c \"rmdir D:\\\\crypto_flutter\" 2>&1; cmd //c \"mklink /J D:\\\\cryptoflutter \\\\\"D:\\\\aplicaciones mobiles\\\\proyecto final\\\\\"\" 2>&1)",
+      "Bash(cmd //c \"dir D:\\\\cryptoflutter\\\\pubspec.yaml\" 2>&1)",
+      "Bash(cmd //c \"rmdir D:\\\\cryptoflutter\" 2>&1)",
+      "Bash(cmd.exe /c 'mklink /J D:\\\\cryptoflutter \"D:\\\\aplicaciones mobiles\\\\proyecto final\"' 2>&1)",
+      "Bash(powershell.exe -Command \"New-Item -ItemType Junction -Path 'D:\\\\cryptoflutter' -Target 'D:\\\\aplicaciones mobiles\\\\proyecto final'\" 2>&1)",
+      "Bash(powershell.exe -Command \"New-Item -ItemType Junction -Path 'D:\\\\fluttersdk' -Target 'D:\\\\aplicaciones mobiles\\\\flutter'\" 2>&1)",
+      "Bash(cd /d/cryptoflutter && /d/fluttersdk/bin/flutter build apk --debug 2>&1 | tail -20)",
+      "Bash(cd /d/cryptoflutter && /d/fluttersdk/bin/flutter build apk --debug 2>&1 | head -30)",
+      "Bash(cmd //c \"for %I in \\(\\\\\"D:\\\\aplicaciones mobiles\\\\flutter\\\\bin\\\\flutter\\\\\"\\) do echo %~sI\" 2>&1)",
+      "Bash(powershell.exe -Command \"\\(New-Object -ComObject Scripting.FileSystemObject\\).GetFolder\\('D:\\\\aplicaciones mobiles'\\).ShortPath\" 2>&1)",
+      "Bash(cd \"D:/aplicaciones mobiles/proyecto final\" && \"D:/aplicaciones mobiles/flutter/bin/flutter\" pub get 2>&1)",
+      "Bash(cmd //c \"where flutter.bat\" 2>/dev/null || cmd //c \"echo %PATH%\" | tr ';' '\\\\n' | grep -i flutter 2>/dev/null || echo \"not found\")",
+      "Read(//c/src/flutter/bin/**)",
+      "Read(//d/src/flutter/bin/**)",
+      "Read(//c/Users/pedro parrado/**)",
+      "Bash(\"D:/aplicaciones mobiles/flutter/bin/flutter.bat\" doctor)",
+      "Bash(cd \"D:/aplicaciones mobiles/proyecto final\" && \"D:/aplicaciones mobiles/flutter/bin/flutter.bat\" run -d chrome)"
+    ]
+  }
+}

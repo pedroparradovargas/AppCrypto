@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/crypto_provider.dart';
 import '../models/currency.dart';
 import 'detail_screen.dart';
+import 'payment_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -72,6 +73,17 @@ class _HomeScreenState extends State<HomeScreen> {
               context.read<CryptoProvider>().fetchCurrencies();
             },
           ),
+          IconButton(
+            icon: Icon(Icons.add_circle, color: Colors.greenAccent, size: 32),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PaymentScreen(),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -130,7 +142,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
 
         final currencies = provider.currencies;
-        
+
         if (currencies.isEmpty) {
           return Center(
             child: Text(
@@ -155,7 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final priceChangeColor = currency.priceChangePercentage24h >= 0
         ? Colors.greenAccent
         : Colors.redAccent;
-    
+
     final priceChangeIcon = currency.priceChangePercentage24h >= 0
         ? Icons.arrow_upward
         : Icons.arrow_downward;

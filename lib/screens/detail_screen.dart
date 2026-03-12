@@ -314,7 +314,7 @@ class _DetailScreenState extends State<DetailScreen> {
           walletItem,
           widget.currency.currentPrice,
         );
-        final profitLossColor = profitLoss >= 0 ? Colors.greenAccent : Colors.redAccent;
+        final profitLossColor = profitLoss >= 0 ? Colors.greenAccent : Colors.redAccent; // ignore: unused_local_variable
 
         return Container(
           padding: const EdgeInsets.all(16),
