@@ -1,0 +1,24 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "vueltospay",
+          "appId": "1:605175273054:android:391a2f999e10f71d3446cf",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "vueltospay",
+          "configurations": {
+            "android": "1:605175273054:android:391a2f999e10f71d3446cf"
+          }
+        }
+      }
+    }
+  }
+}
