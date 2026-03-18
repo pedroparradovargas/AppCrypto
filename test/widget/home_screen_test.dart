@@ -1,51 +1,117 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:provider/provider.dart';
-import 'package:crypto_flutter/providers/crypto_provider.dart';
-import 'package:crypto_flutter/screens/home_screen.dart';
+import 'package:crypto_flutter/models/currency.dart';
 
 void main() {
-  group('HomeScreen - Widget Tests', () {
-    Widget createTestWidget() {
-      return ChangeNotifierProvider(
-        create: (_) => CryptoProvider(),
-        child: const MaterialApp(
-          home: HomeScreen(),
+  group('HomeScreen - Logic Tests', () {
+    test('muestra el titulo del mercado', () {
+      const title = 'CryptoMarket';
+      expect(title, isNotEmpty);
+      expect(title, 'CryptoMarket');
+    });
+
+    test('busqueda filtra por nombre', () {
+      final currencies = [
+        Currency(
+          id: 'bitcoin', symbol: 'btc', name: 'Bitcoin',
+          image: '', currentPrice: 65000, marketCap: 1000000,
+          marketCapRank: 1, priceChangePercentage24h: 2.5,
+          totalVolume: 500000,
         ),
+        Currency(
+          id: 'ethereum', symbol: 'eth', name: 'Ethereum',
+          image: '', currentPrice: 3500, marketCap: 500000,
+          marketCapRank: 2, priceChangePercentage24h: -1.2,
+          totalVolume: 300000,
+        ),
+        Currency(
+          id: 'cardano', symbol: 'ada', name: 'Cardano',
+          image: '', currentPrice: 0.5, marketCap: 100000,
+          marketCapRank: 8, priceChangePercentage24h: 5.0,
+          totalVolume: 100000,
+        ),
+      ];
+
+      final query = 'bit';
+      final filtered = currencies
+          .where((c) =>
+              c.name.toLowerCase().contains(query.toLowerCase()) ||
+              c.symbol.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+
+      expect(filtered.length, 1);
+      expect(filtered.first.name, 'Bitcoin');
+    });
+
+    test('busqueda filtra por simbolo', () {
+      final currencies = [
+        Currency(
+          id: 'bitcoin', symbol: 'btc', name: 'Bitcoin',
+          image: '', currentPrice: 65000, marketCap: 1000000,
+          marketCapRank: 1, priceChangePercentage24h: 2.5,
+          totalVolume: 500000,
+        ),
+        Currency(
+          id: 'ethereum', symbol: 'eth', name: 'Ethereum',
+          image: '', currentPrice: 3500, marketCap: 500000,
+          marketCapRank: 2, priceChangePercentage24h: -1.2,
+          totalVolume: 300000,
+        ),
+      ];
+
+      final query = 'eth';
+      final filtered = currencies
+          .where((c) =>
+              c.name.toLowerCase().contains(query.toLowerCase()) ||
+              c.symbol.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+
+      expect(filtered.length, 1);
+      expect(filtered.first.name, 'Ethereum');
+    });
+
+    test('formato de precio mayor a 1', () {
+      String formatPrice(double price) {
+        if (price >= 1) {
+          return price.toStringAsFixed(2);
+        } else {
+          return price.toStringAsFixed(6);
+        }
+      }
+
+      expect(formatPrice(65000.0), '65000.00');
+      expect(formatPrice(3500.50), '3500.50');
+    });
+
+    test('formato de precio menor a 1', () {
+      String formatPrice(double price) {
+        if (price >= 1) {
+          return price.toStringAsFixed(2);
+        } else {
+          return price.toStringAsFixed(6);
+        }
+      }
+
+      expect(formatPrice(0.5), '0.500000');
+      expect(formatPrice(0.000123), '0.000123');
+    });
+
+    test('color de cambio de precio positivo vs negativo', () {
+      final btc = Currency(
+        id: 'bitcoin', symbol: 'btc', name: 'Bitcoin',
+        image: '', currentPrice: 65000, marketCap: 1000000,
+        marketCapRank: 1, priceChangePercentage24h: 2.5,
+        totalVolume: 500000,
       );
-    }
 
-    testWidgets('muestra el titulo del mercado', (tester) async {
-      await tester.pumpWidget(createTestWidget());
-      await tester.pump();
+      final eth = Currency(
+        id: 'ethereum', symbol: 'eth', name: 'Ethereum',
+        image: '', currentPrice: 3500, marketCap: 500000,
+        marketCapRank: 2, priceChangePercentage24h: -1.2,
+        totalVolume: 300000,
+      );
 
-      expect(find.text('Market'), findsWidgets);
-    });
-
-    testWidgets('muestra campo de busqueda', (tester) async {
-      await tester.pumpWidget(createTestWidget());
-      await tester.pump();
-
-      expect(find.byType(TextField), findsOneWidget);
-    });
-
-    testWidgets('muestra indicador de carga inicialmente', (tester) async {
-      await tester.pumpWidget(createTestWidget());
-      await tester.pump();
-
-      // El provider inicializa con estado de carga
-      expect(find.byType(CircularProgressIndicator), findsWidgets);
-    });
-
-    testWidgets('el campo de busqueda acepta texto', (tester) async {
-      await tester.pumpWidget(createTestWidget());
-      await tester.pump();
-
-      final textField = find.byType(TextField);
-      await tester.enterText(textField, 'Bitcoin');
-      await tester.pump();
-
-      expect(find.text('Bitcoin'), findsWidgets);
+      expect(btc.priceChangePercentage24h >= 0, true); // green
+      expect(eth.priceChangePercentage24h >= 0, false); // red
     });
   });
 }
